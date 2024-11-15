@@ -1,0 +1,109 @@
+%pip install scipy
+%pip install networkx
+%pip install scikit-fuzzy
+
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+import matplotlib.pyplot as plt
+
+# Input and output
+service = ctrl.Antecedent(np.arange(0, 11, 1), 'service')
+food = ctrl.Antecedent(np.arange(0, 11, 1), 'food')
+income = ctrl.Antecedent(np.arange(0, 201, 1), 'income')
+party_size = ctrl.Antecedent(np.arange(1, 11, 1), 'party_size')
+tip = ctrl.Consequent(np.arange(0, 31, 1), 'tip')
+
+# Membership functions for service
+service['poor'] = fuzz.trimf(service.universe, [0, 0, 4])
+service['average'] = fuzz.trimf(service.universe, [3, 5, 7])
+service['good'] = fuzz.trimf(service.universe, [6, 10, 10])
+
+# Membership functions for food quality
+food['terrible'] = fuzz.trimf(food.universe, [0, 0, 4])
+food['average'] = fuzz.trimf(food.universe, [3, 5, 7])
+food['delicious'] = fuzz.trimf(food.universe, [6, 10, 10])
+
+# Membership functions for income
+income['low'] = fuzz.trimf(income.universe, [0, 0, 75])
+income['medium'] = fuzz.trimf(income.universe, [50, 100, 150])
+income['high'] = fuzz.trimf(income.universe, [125, 200, 200])
+
+# Membership functions for party size
+party_size['small'] = fuzz.trimf(party_size.universe, [1, 1, 4])
+party_size['medium'] = fuzz.trimf(party_size.universe, [2, 4, 6])
+party_size['large'] = fuzz.trimf(party_size.universe, [4, 10, 10])
+
+# Membership functions for tipping
+tip['low'] = fuzz.trimf(tip.universe, [0, 0, 15])
+tip['medium'] = fuzz.trimf(tip.universe, [10, 15, 20])
+tip['high'] = fuzz.trimf(tip.universe, [15, 30, 30])
+
+#Fuzzy Rules
+rule1 = ctrl.Rule(service['poor'] | food['terrible'], tip['low'])
+rule2 = ctrl.Rule(service['good'] & food['delicious'], tip['high'])
+rule3 = ctrl.Rule(service['average'] & food['average'], tip['medium'])
+rule4 = ctrl.Rule(party_size['large'] | income['high'], tip['high'])
+rule5 = ctrl.Rule(party_size['small'] & income['low'], tip['low'])
+rule6 = ctrl.Rule(income['medium'], tip['medium'])
+
+tipping_ctrl = ctrl.ControlSystem([rule1, rule2, rule3, rule4, rule5, rule6])
+tipping = ctrl.ControlSystemSimulation(tipping_ctrl)
+
+# Intialize inputs
+tipping.input['service'] = 10
+tipping.input['food'] = 1
+tipping.input['party_size'] = 10
+tipping.input['income'] = 0
+
+# Compute the tip
+tipping.compute()
+print(f"Suggested tip: {tipping.output['tip']:.2f}%")
+
+# Graphing
+fig, axes = plt.subplots(nrows=5, figsize=(8, 15))
+
+# Service quality membership functions
+axes[0].plot(service.universe, service['poor'].mf, 'r', linewidth=1.5, label='Poor')
+axes[0].plot(service.universe, service['average'].mf, 'g', linewidth=1.5, label='Average')
+axes[0].plot(service.universe, service['good'].mf, 'b', linewidth=1.5, label='Good')
+axes[0].set_title('Service Quality')
+axes[0].legend()
+
+# Food quality membership functions
+axes[1].plot(food.universe, food['terrible'].mf, 'r', linewidth=1.5, label='Terrible')
+axes[1].plot(food.universe, food['average'].mf, 'g', linewidth=1.5, label='Average')
+axes[1].plot(food.universe, food['delicious'].mf, 'b', linewidth=1.5, label='Delicious')
+axes[1].set_title('Food Quality')
+axes[1].legend()
+
+#Party size membership functions
+axes[2].plot(party_size.universe, party_size['small'].mf, 'r', linewidth=1.5, label='Small')
+axes[2].plot(party_size.universe, party_size['medium'].mf, 'g', linewidth=1.5, label='Medium')
+axes[2].plot(party_size.universe, party_size['large'].mf, 'b', linewidth=1.5, label='Large')
+axes[2].set_title('Party Size')
+axes[2].legend()
+
+#Income membership functions
+axes[3].plot(income.universe, income['low'].mf, 'r', linewidth=1.5, label='Low')
+axes[3].plot(income.universe, income['medium'].mf, 'g', linewidth=1.5, label='Medium')
+axes[3].plot(income.universe, income['high'].mf, 'b', linewidth=1.5, label='High')
+axes[3].set_title('Income (in thousands per year)')
+axes[3].legend()
+
+# Tip amount membership functions
+axes[4].plot(tip.universe, tip['low'].mf, 'r', linewidth=1.5, label='Low')
+axes[4].plot(tip.universe, tip['medium'].mf, 'g', linewidth=1.5, label='Medium')
+axes[4].plot(tip.universe, tip['high'].mf, 'b', linewidth=1.5, label='High')
+axes[4].set_title('Tip Amount')
+axes[4].legend()
+
+for ax in axes:
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_linewidth(0.5)
+    ax.spines['bottom'].set_linewidth(0.5)
+plt.tight_layout()
+
+tip.view(sim=tipping)
+plt.show()
